@@ -5,13 +5,15 @@ import {
   FiFolder, FiStar, FiGitBranch, FiUsers, FiAlertCircle, 
   FiGitPullRequest, FiClock, FiSearch, FiEye, FiPlus, FiTag 
 } from 'react-icons/fi';
-import { repositories } from '../data/mockData';
+import { useRepositories } from '../hooks/useDevTrackQueries';
 
 const Repositories = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState('All');
   const [languageFilter, setLanguageFilter] = useState('All');
   const [sortBy, setSortBy] = useState('stars');
+
+  const { data: repositories = [], isLoading, error } = useRepositories();
 
   // Languages list for filter dropdown
   const languages = ['All', ...new Set(repositories.map(r => r.language))];
@@ -77,8 +79,22 @@ const Repositories = () => {
         </Link>
       </div>
 
-      {/* Search and Filters Bar */}
-      <div className="p-4 bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {isLoading && (
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl border border-red-200 dark:border-red-800">
+          Failed to load repositories. Is the backend running?
+        </div>
+      )}
+
+      {!isLoading && !error && (
+        <>
+          {/* Search and Filters Bar */}
+          <div className="p-4 bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
           <input
@@ -240,6 +256,8 @@ const Repositories = () => {
           </div>
         )}
       </motion.div>
+      </>
+      )}
 
     </div>
   );

@@ -1,79 +1,94 @@
 import axios from 'axios';
-import * as mockData from '../data/mockData';
 
-// Simulated API delay (ms)
-const API_DELAY = 100;
-
-// Setup a baseline axios instance (UI only)
+// Create base Axios instance for DevTrack Backend (which proxies to Gitea)
 const api = axios.create({
-  baseURL: 'https://api.devtrack.internal/v1',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
+  withCredentials: true, // Important for cookies/sessions
   headers: {
     'Content-Type': 'application/json',
   }
 });
 
-// Helper to simulate API call latency
-const delayResolve = (data) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ data });
-    }, API_DELAY);
-  });
+// --- Authentication ---
+export const authService = {
+  login: async (token) => {
+    const response = await api.post('/auth/login', { token });
+    return response.data;
+  },
+  logout: async () => {
+    const response = await api.post('/auth/logout');
+    return response.data;
+  },
+  // Get current Gitea user from proxy
+  getCurrentUser: async () => {
+    const response = await api.get('/gitea/user');
+    return response.data;
+  }
 };
 
-export const orgService = {
-  getOrgInfo: () => delayResolve(mockData.orgInfo),
-  getAuditLogs: () => delayResolve(mockData.auditLogs),
-};
-
+// --- Gitea Data (Proxied) ---
 export const repositoryService = {
-  getAll: () => delayResolve(mockData.repositories),
-  getByName: (name) => delayResolve(mockData.getRepoDetail(name)),
-  create: (repo) => delayResolve({ message: "Repository created successfully", repo }),
-  delete: (id) => delayResolve({ message: "Repository deleted successfully", id }),
-};
-
-export const developerService = {
-  getAll: () => delayResolve(mockData.developers),
-  getByUsername: (username) => delayResolve(mockData.getDevProfile(username)),
-  create: (dev) => delayResolve({ message: "Developer registered successfully", dev }),
-  delete: (id) => delayResolve({ message: "Developer removed successfully", id }),
-  assignRole: (id, role) => delayResolve({ message: "Role assigned successfully", id, role }),
+  // Get repos for the current user
+  getAll: async () => {
+    const response = await api.get('/gitea/user/repos');
+    return response.data;
+  },
+  // Get specific repo by owner and name
+  getByName: async (owner, repo) => {
+    const response = await api.get(`/gitea/repos/${owner}/${repo}`);
+    return response.data;
+  }
 };
 
 export const commitService = {
-  getAll: () => delayResolve(mockData.commits),
-  getByRepo: (repoName) => delayResolve(mockData.commits.filter(c => c.repository.toLowerCase() === repoName.toLowerCase())),
+  getByRepo: async (owner, repo) => {
+    const response = await api.get(`/gitea/repos/${owner}/${repo}/commits`);
+    return response.data;
+  }
 };
 
 export const branchService = {
-  getAll: () => delayResolve(mockData.branches),
-  getByRepo: (repoName) => delayResolve(mockData.branches.filter(b => b.repository.toLowerCase() === repoName.toLowerCase())),
-};
-
-export const prService = {
-  getAll: () => delayResolve(mockData.pullRequests),
-  getByRepo: (repoName) => delayResolve(mockData.pullRequests.filter(p => p.repository.toLowerCase() === repoName.toLowerCase())),
+  getByRepo: async (owner, repo) => {
+    const response = await api.get(`/gitea/repos/${owner}/${repo}/branches`);
+    return response.data;
+  }
 };
 
 export const issueService = {
-  getAll: () => delayResolve(mockData.issues),
-  getByRepo: (repoName) => delayResolve(mockData.issues.filter(i => i.repository.toLowerCase() === repoName.toLowerCase())),
+  getByRepo: async (owner, repo) => {
+    const response = await api.get(`/gitea/repos/${owner}/${repo}/issues`);
+    return response.data;
+  }
 };
 
-export const activityService = {
-  getTimeline: () => delayResolve(mockData.activityLogs),
+export const prService = {
+  getByRepo: async (owner, repo) => {
+    const response = await api.get(`/gitea/repos/${owner}/${repo}/pulls`);
+    return response.data;
+  }
 };
 
-export const notificationService = {
-  getAll: () => delayResolve(mockData.notifications),
-  markAllAsRead: () => delayResolve({ success: true }),
-};
-
+// --- Custom DevTrack Backend Data ---
 export const attendanceService = {
-  getLogs: () => delayResolve(mockData.attendanceLogs),
-  checkIn: (userId, time) => delayResolve({ success: true, message: "Clocked in successfully", time }),
-  checkOut: (userId, time) => delayResolve({ success: true, message: "Clocked out successfully", time })
+  getLogs: async () => {
+    const response = await api.get('/attendance');
+    return response.data;
+  },
+  checkIn: async (username) => {
+    const response = await api.post('/attendance', { username, type: 'check-in' });
+    return response.data;
+  },
+  checkOut: async (username) => {
+    const response = await api.post('/attendance', { username, type: 'check-out' });
+    return response.data;
+  }
+};
+
+export const developerService = {
+  getAll: async () => {
+    const response = await api.get('/developers');
+    return response.data;
+  }
 };
 
 export default api;
