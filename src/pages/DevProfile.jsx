@@ -1,163 +1,283 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  FiUser, FiMail, FiMapPin, FiBriefcase, FiFolder, FiGitCommit, 
-  FiAlertCircle, FiGitPullRequest, FiClock, FiChevronLeft, FiActivity, FiGlobe 
-} from 'react-icons/fi';
-import { useDevProfile } from '../hooks/useDevTrackQueries';
+import React, { useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  FiUser,
+  FiMail,
+  FiMapPin,
+  FiBriefcase,
+  FiFolder,
+  FiGitCommit,
+  FiAlertCircle,
+  FiGitPullRequest,
+  FiChevronLeft,
+  FiGlobe,
+  FiGitBranch,
+  FiStar,
+  FiUsers,
+  FiExternalLink,
+} from "react-icons/fi";
+import {
+  useDevProfile,
+  useDevRepos,
+  useAllCommits,
+  useDevelopers,
+} from "../hooks/useDevTrackQueries";
 
 const DevProfile = () => {
   const { username } = useParams();
-  const navigate = useNavigate();
-  const [dev, setDev] = useState(null);
-  const [activeSubTab, setActiveSubTab] = useState('overview');
+  const [activeSubTab, setActiveSubTab] = useState("overview");
 
-  useEffect(() => {
-    const profile = getDevProfile(username);
-    if (!profile) {
-      navigate('/developers');
-    } else {
-      setDev(profile);
-    }
-  }, [username, navigate]);
+  const {
+    data: dev,
+    isLoading: isDevLoading,
+    isError: isDevError,
+  } = useDevProfile(username);
+  const { data: developers = [], isLoading: isDevelopersLoading } =
+    useDevelopers();
+  const { data: devRepos = [] } = useDevRepos(username);
+  const { data: allCommits = [] } = useAllCommits();
 
-  if (!dev) {
+  const fallbackDev = developers.find(
+    (item) =>
+      item.username?.toLowerCase() === username?.toLowerCase() ||
+      item.name?.toLowerCase() === username?.toLowerCase(),
+  );
+  const activeDev = dev || fallbackDev;
+  const isLoading = isDevLoading && !activeDev && isDevelopersLoading;
+  const isError = isDevError && !activeDev;
+
+  // Filter commits authored by this user
+  const devCommits = allCommits.filter(
+    (c) =>
+      c.authorUsername === username ||
+      c.author?.toLowerCase().includes((activeDev?.name || "").toLowerCase()),
+  );
+
+  // Contribution graph (random but seeded by username for consistency)
+  const seed = username
+    ? username.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    : 0;
+  const pseudo = (i) => ((seed * 9301 + i * 49297) % 233280) / 233280;
+  const contributionGrid = Array.from({ length: 7 }, (_, r) =>
+    Array.from({ length: 20 }, (_, c) => Math.floor(pseudo(r * 20 + c) * 5)),
+  );
+
+  const getContributionColor = (val) => {
+    if (val === 0) return "bg-slate-100 dark:bg-slate-800";
+    if (val === 1) return "bg-emerald-100 dark:bg-emerald-950/40";
+    if (val === 2) return "bg-emerald-300 dark:bg-emerald-800/60";
+    if (val === 3) return "bg-emerald-500 dark:bg-emerald-600";
+    return "bg-emerald-700 dark:bg-emerald-400";
+  };
+
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+          <p className="text-sm text-slate-400">Loading profile...</p>
+        </div>
       </div>
     );
   }
 
-  // Stats
-  const totalCommits = dev.commits.length;
-  const pendingPRs = dev.pullRequests.filter(pr => pr.status === 'Open').length;
-  const assignedIssues = dev.issues.filter(i => i.status !== 'Closed').length;
-
-  // Contribution graph mock dataset (7 days x 16 weeks)
-  const contributionGrid = Array.from({ length: 7 }, () => 
-    Array.from({ length: 20 }, () => Math.floor(Math.random() * 5))
-  );
-
-  const daysOfWeek = ['Mon', 'Wed', 'Fri'];
-  
-  const getContributionColor = (val) => {
-    if (val === 0) return 'bg-slate-100 dark:bg-slate-800';
-    if (val === 1) return 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900';
-    if (val === 2) return 'bg-emerald-300 dark:bg-emerald-800/60 text-emerald-100';
-    if (val === 3) return 'bg-emerald-500 dark:bg-emerald-600 text-white';
-    return 'bg-emerald-700 dark:bg-emerald-450 text-white';
-  };
-
-  return (
-    <div className="space-y-6">
-      
-      {/* Back button */}
-      <div>
-        <Link 
-          to="/developers" 
-          className="text-xs font-bold text-slate-400 hover:text-slate-650 dark:hover:text-slate-350 flex items-center gap-1 w-fit transition-colors mb-3"
+  if (isError || !activeDev) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <FiUser className="text-5xl text-slate-300" />
+        <p className="text-slate-500">
+          Developer <strong>@{username}</strong> not found.
+        </p>
+        <Link
+          to="/developers"
+          className="text-sm text-blue-500 hover:underline flex items-center gap-1"
         >
           <FiChevronLeft /> Back to Developers
         </Link>
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Back button */}
+      <Link
+        to="/developers"
+        className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 w-fit transition-colors"
+      >
+        <FiChevronLeft /> Back to Developers
+      </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        
-        {/* Left Side: Developer Info Card */}
+        {/* Left: Profile Card */}
         <div className="lg:col-span-1 bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col items-center text-center h-fit">
           <div className="relative">
-            <img 
-              src={dev.avatar} 
-              alt={dev.name} 
+            <img
+              src={activeDev.avatar}
+              alt={activeDev.name}
               className="w-28 h-28 rounded-full border-2 border-slate-100 dark:border-slate-800 object-cover shadow-md"
+              onError={(e) => {
+                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(activeDev.name)}&background=3b82f6&color=fff&size=128`;
+              }}
             />
-            <span className={`absolute bottom-1 right-2 w-4 h-4 rounded-full border-2 border-white dark:border-[#1E293B]
-              ${dev.status === 'Active' ? 'bg-green-500' : 'bg-slate-455'}
-            `} />
+            <span className="absolute bottom-1 right-2 w-4 h-4 rounded-full border-2 border-white dark:border-[#1E293B] bg-green-500" />
           </div>
 
-          <h2 className="text-lg font-bold text-slate-850 dark:text-white mt-4">{dev.name}</h2>
-          <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold">@{dev.username}</span>
-          
-          <span className="text-xs font-bold px-3 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 mt-3 select-none">
-            {dev.role}
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mt-4">
+            {activeDev.name}
+          </h2>
+          <span className="text-xs text-slate-400 font-semibold">
+            @{activeDev.username}
           </span>
 
-          <p className="text-xs text-slate-450 dark:text-slate-400 font-medium leading-relaxed mt-5">
-            {dev.bio || "Full stack developer based in office headquarters."}
-          </p>
+          <span className="text-xs font-bold px-3 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 mt-3">
+            {activeDev.role}
+          </span>
 
-          <div className="w-full border-t border-slate-100 dark:border-slate-800 mt-6 pt-5 space-y-3.5 text-left text-xs font-medium">
-            <div className="flex items-center gap-3 text-slate-550 dark:text-slate-350">
-              <FiMail className="text-slate-400 flex-shrink-0" />
-              <span className="truncate">{dev.email}</span>
+          {activeDev.bio && (
+            <p className="text-xs text-slate-400 font-medium leading-relaxed mt-4">
+              {activeDev.bio}
+            </p>
+          )}
+
+          <div className="w-full border-t border-slate-100 dark:border-slate-800 mt-5 pt-4 space-y-3 text-left text-xs font-medium">
+            {activeDev.email && (
+              <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                <FiMail className="text-slate-400 flex-shrink-0" />
+                <span className="truncate">{activeDev.email}</span>
+              </div>
+            )}
+            {activeDev.department && (
+              <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                <FiBriefcase className="text-slate-400 flex-shrink-0" />
+                <span>{activeDev.department}</span>
+              </div>
+            )}
+            {activeDev.location && (
+              <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                <FiMapPin className="text-slate-400 flex-shrink-0" />
+                <span>{activeDev.location}</span>
+              </div>
+            )}
+            {activeDev.website && (
+              <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                <FiGlobe className="text-slate-400 flex-shrink-0" />
+                <a
+                  href={activeDev.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-500 hover:underline truncate"
+                >
+                  {activeDev.website}
+                </a>
+              </div>
+            )}
+          </div>
+
+          <div className="w-full border-t border-slate-100 dark:border-slate-800 mt-5 pt-4 grid grid-cols-2 gap-3 text-center text-xs">
+            <div>
+              <p className="font-bold text-slate-800 dark:text-white text-base">
+                {activeDev.followersCount || 0}
+              </p>
+              <p className="text-slate-400">Followers</p>
             </div>
-            <div className="flex items-center gap-3 text-slate-550 dark:text-slate-350">
-              <FiBriefcase className="text-slate-400 flex-shrink-0" />
-              <span>{dev.department}</span>
-            </div>
-            <div className="flex items-center gap-3 text-slate-550 dark:text-slate-350">
-              <FiMapPin className="text-slate-400 flex-shrink-0" />
-              <span>{dev.location}</span>
-            </div>
-            <div className="flex items-center gap-3 text-slate-550 dark:text-slate-350">
-              <FiGlobe className="text-slate-400 flex-shrink-0" />
-              <span className="text-blue-500 hover:underline cursor-pointer">portfolio.dev</span>
+            <div>
+              <p className="font-bold text-slate-800 dark:text-white text-base">
+                {activeDev.followingCount || 0}
+              </p>
+              <p className="text-slate-400">Following</p>
             </div>
           </div>
+
+          <a
+            href={`http://localhost:3000/${activeDev.username}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-all"
+          >
+            <FiExternalLink /> View on Gitea
+          </a>
         </div>
 
-        {/* Right Side: Contribution logs and metrics */}
+        {/* Right: Activity & Tabs */}
         <div className="lg:col-span-3 space-y-6">
-          
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Commits</span>
-              <span className="text-xl font-bold text-slate-800 dark:text-white mt-1 block">{dev.commitCount}</span>
-            </div>
-            <div className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Open Issues</span>
-              <span className="text-xl font-bold text-red-500 mt-1 block">{assignedIssues}</span>
-            </div>
-            <div className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PRs Created</span>
-              <span className="text-xl font-bold text-green-500 mt-1 block">{dev.pullRequests}</span>
-            </div>
+            {[
+              {
+                label: "Commits",
+                value: devCommits.length,
+                color: "text-blue-500",
+              },
+              {
+                label: "Repositories",
+                value: devRepos.length,
+                color: "text-purple-500",
+              },
+              {
+                label: "Open PRs",
+                value: devRepos.reduce((s, r) => s + (r.openPRsCount || 0), 0),
+                color: "text-green-500",
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-center"
+              >
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  {s.label}
+                </span>
+                <span className={`text-2xl font-bold mt-1 block ${s.color}`}>
+                  {s.value}
+                </span>
+              </div>
+            ))}
           </div>
 
-          {/* Contribution Graph Card */}
+          {/* Contribution Graph */}
           <div className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Contribution History</h3>
-                <p className="text-xs text-slate-400 font-medium">Daily code logs pushed to corporate repositories.</p>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">
+                  Contribution History
+                </h3>
+                <p className="text-xs text-slate-400 font-medium">
+                  Daily code logs
+                </p>
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-450">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400">
                 <span>Less</span>
-                <span className="w-2.5 h-2.5 rounded-sm bg-slate-100 dark:bg-slate-800" />
-                <span className="w-2.5 h-2.5 rounded-sm bg-emerald-100 dark:bg-emerald-950/20" />
-                <span className="w-2.5 h-2.5 rounded-sm bg-emerald-300 dark:bg-emerald-800/40" />
-                <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
-                <span className="w-2.5 h-2.5 rounded-sm bg-emerald-700" />
+                {[
+                  "bg-slate-100 dark:bg-slate-800",
+                  "bg-emerald-100",
+                  "bg-emerald-300",
+                  "bg-emerald-500",
+                  "bg-emerald-700",
+                ].map((c, i) => (
+                  <span key={i} className={`w-2.5 h-2.5 rounded-sm ${c}`} />
+                ))}
                 <span>More</span>
               </div>
             </div>
-
-            <div className="flex flex-col gap-1 overflow-x-auto pb-2 scrollbar">
+            <div className="flex flex-col gap-1 overflow-x-auto pb-2">
               {contributionGrid.map((row, rIdx) => (
                 <div key={rIdx} className="flex gap-1 items-center">
                   <span className="text-[9px] text-slate-400 font-bold w-6 select-none">
-                    {rIdx === 1 ? 'Mon' : rIdx === 3 ? 'Wed' : rIdx === 5 ? 'Fri' : ''}
+                    {rIdx === 1
+                      ? "Mon"
+                      : rIdx === 3
+                        ? "Wed"
+                        : rIdx === 5
+                          ? "Fri"
+                          : ""}
                   </span>
                   <div className="flex gap-1">
                     {row.map((val, cIdx) => (
-                      <div 
-                        key={cIdx} 
-                        title={`Day ${rIdx}, Week ${cIdx}: ${val} commits`}
-                        className={`w-3.5 h-3.5 rounded-sm cursor-pointer transition-transform hover:scale-120 ${getContributionColor(val)}`}
+                      <div
+                        key={cIdx}
+                        title={`${val} contributions`}
+                        className={`w-3.5 h-3.5 rounded-sm cursor-pointer transition-transform hover:scale-125 ${getContributionColor(val)}`}
                       />
                     ))}
                   </div>
@@ -166,205 +286,157 @@ const DevProfile = () => {
             </div>
           </div>
 
-          {/* Sub Navigation Tabs */}
-          <div className="flex border-b border-slate-200 dark:border-slate-850 gap-2 pb-1">
-            <button 
-              onClick={() => setActiveSubTab('overview')}
-              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors
-                ${activeSubTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800'}
-              `}
-            >
-              Overview
-            </button>
-            <button 
-              onClick={() => setActiveSubTab('commits')}
-              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors
-                ${activeSubTab === 'commits' ? 'bg-blue-600 text-white' : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800'}
-              `}
-            >
-              Commits ({dev.commits.length})
-            </button>
-            <button 
-              onClick={() => setActiveSubTab('issues')}
-              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors
-                ${activeSubTab === 'issues' ? 'bg-blue-600 text-white' : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800'}
-              `}
-            >
-              Assigned Issues ({dev.issues.length})
-            </button>
-            <button 
-              onClick={() => setActiveSubTab('prs')}
-              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors
-                ${activeSubTab === 'prs' ? 'bg-blue-600 text-white' : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800'}
-              `}
-            >
-              Pull Requests ({dev.pullRequests.length})
-            </button>
+          {/* Sub Tabs */}
+          <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1 pb-1">
+            {[
+              { id: "overview", label: "Overview" },
+              { id: "repos", label: `Repositories (${devRepos.length})` },
+              { id: "commits", label: `Commits (${devCommits.length})` },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveSubTab(tab.id)}
+                className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                  activeSubTab === tab.id
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Tab Views */}
-          <div className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm min-h-[300px]">
-            
-            {/* Overview Section */}
-            {activeSubTab === 'overview' && (
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4">Assigned Repositories</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Mock repositories the dev has contributed to */}
-                    {['EmployeePortal', 'HRMS', 'CustomerInsight'].map((repoName, idx) => (
-                      <div key={idx} className="p-4 border border-slate-150 dark:border-slate-800 rounded-2xl flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-                        <div className="flex items-center gap-2.5">
-                          <FiFolder className="text-blue-500" />
-                          <Link to={`/repositories/${repoName}`} className="text-sm font-bold text-slate-700 hover:text-blue-600 dark:text-slate-200">
-                            {repoName}
-                          </Link>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-slate-100 dark:bg-slate-900 text-slate-500">
-                          {idx === 1 ? 'Java' : idx === 2 ? 'Python' : 'JavaScript'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-3">Recent Commit Pushes</h4>
-                  <div className="space-y-3">
-                    {dev.commits.slice(0, 3).map(c => (
-                      <div key={c.hash} className="p-3 border border-slate-150 dark:border-slate-800 rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-750 dark:text-slate-250 truncate max-w-sm">{c.message}</p>
-                          <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">{c.repository} • {c.shortHash}</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-semibold">{new Date(c.dateTime).toLocaleDateString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Commits Section */}
-            {activeSubTab === 'commits' && (
+          {/* Tab Content */}
+          <div className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm min-h-[200px]">
+            {activeSubTab === "overview" && (
               <div className="space-y-4">
-                {dev.commits.length > 0 ? (
-                  dev.commits.map(c => (
-                    <div key={c.hash} className="p-4 border border-slate-150 dark:border-slate-850 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-slate-750 dark:text-slate-200">{c.message}</h4>
-                        <div className="flex items-center gap-3 text-xs text-slate-400">
-                          <span className="font-mono text-blue-500 font-bold bg-blue-500/5 px-2 py-0.5 rounded">{c.shortHash}</span>
-                          <span>•</span>
-                          <span>Repo: {c.repository}</span>
-                          <span>•</span>
-                          <span className="font-mono">Branch: {c.branch}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs font-bold">
-                        <span className="text-green-500">+{c.insertions}</span>
-                        <span className="text-red-500">-{c.deletions}</span>
-                        <span className="text-slate-400 dark:text-slate-550 font-normal">{new Date(c.dateTime).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  ))
+                <h4 className="text-sm font-bold text-slate-800 dark:text-white">
+                  Repositories
+                </h4>
+                {devRepos.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-6">
+                    No repositories found.
+                  </p>
                 ) : (
-                  <div className="text-center py-6 text-slate-450">No commits found.</div>
-                )}
-              </div>
-            )}
-
-            {/* Issues Section */}
-            {activeSubTab === 'issues' && (
-              <div className="space-y-4">
-                {dev.issues.length > 0 ? (
-                  dev.issues.map(i => (
-                    <div key={i.id} className="p-4 border border-slate-150 dark:border-slate-850 rounded-2xl flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-750 dark:text-slate-200">{i.title}</h4>
-                        <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-                          <span className="font-semibold text-slate-500">#{i.id}</span>
-                          <span>•</span>
-                          <span>Repo: {i.repository}</span>
-                          <span>•</span>
-                          <span className={`font-bold uppercase tracking-wider text-[9px]
-                            ${i.priority === 'High' ? 'text-red-500' : i.priority === 'Medium' ? 'text-amber-500' : 'text-blue-500'}
-                          `}>
-                            {i.priority} Priority
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {devRepos.slice(0, 6).map((repo) => (
+                      <Link
+                        key={repo.id}
+                        to={`/repositories/${repo.owner}/${repo.name}`}
+                        className="p-4 border border-slate-150 dark:border-slate-800 rounded-2xl hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <FiFolder className="text-blue-500" />
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                              {repo.name}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-500">
+                            {repo.language}
                           </span>
                         </div>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider
-                        ${i.status === 'Closed' ? 'bg-slate-100 text-slate-650' : 'bg-red-500/10 text-red-550'}
-                      `}>
-                        {i.status}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-6 text-slate-450">No issues assigned.</div>
+                        {repo.description && (
+                          <p className="text-xs text-slate-400 mt-2 line-clamp-1">
+                            {repo.description}
+                          </p>
+                        )}
+                        <div className="flex gap-3 mt-2 text-xs text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <FiStar className="text-amber-400" />
+                            {repo.stars}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FiGitBranch />
+                            {repo.forks} forks
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
 
-            {/* PRs Section */}
-            {activeSubTab === 'prs' && (
-              <div className="space-y-4">
-                {dev.pullRequests.length > 0 ? (
-                  dev.pullRequests.map(pr => (
-                    <div key={pr.id} className="p-4 border border-slate-150 dark:border-slate-850 rounded-2xl flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-750 dark:text-slate-200">{pr.title}</h4>
-                        <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-                          <span className="font-semibold text-slate-550">#{pr.id}</span>
-                          <span>•</span>
-                          <span>Repo: {pr.repository}</span>
-                          <span>•</span>
-                          <span>Merge: {pr.sourceBranch} → {pr.targetBranch}</span>
+            {activeSubTab === "repos" && (
+              <div className="space-y-3">
+                {devRepos.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-6">
+                    No repositories found.
+                  </p>
+                ) : (
+                  devRepos.map((repo) => (
+                    <Link
+                      key={repo.id}
+                      to={`/repositories/${repo.owner}/${repo.name}`}
+                      className="flex items-center justify-between p-4 border border-slate-100 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-500/10">
+                          <FiFolder className="text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                            {repo.name}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {repo.description || "No description"}
+                          </p>
                         </div>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider
-                        ${pr.status === 'Merged' ? 'bg-purple-500/10 text-purple-650 dark:text-purple-400' : pr.status === 'Open' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}
-                      `}>
-                        {pr.status}
+                      <div className="flex items-center gap-4 text-xs text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <FiStar className="text-amber-400" />
+                          {repo.stars}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-medium">
+                          {repo.language}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+            )}
+
+            {activeSubTab === "commits" && (
+              <div className="space-y-3">
+                {devCommits.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-6">
+                    No commits found for this user.
+                  </p>
+                ) : (
+                  devCommits.map((c) => (
+                    <div
+                      key={c.id}
+                      className="p-4 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                          {c.message}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <span className="font-mono text-blue-500 bg-blue-500/5 px-2 py-0.5 rounded">
+                            {c.shortHash}
+                          </span>
+                          <span>•</span>
+                          <span>{c.repository}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-slate-400 ml-4 whitespace-nowrap">
+                        {c.dateTime
+                          ? new Date(c.dateTime).toLocaleDateString()
+                          : ""}
                       </span>
                     </div>
                   ))
-                ) : (
-                  <div className="text-center py-6 text-slate-450">No pull requests created.</div>
                 )}
               </div>
             )}
           </div>
-
-          {/* Activity Timeline */}
-          <div className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-5">Recent Activity Timeline</h3>
-            <div className="space-y-5 pl-4 border-l border-slate-150 dark:border-slate-850">
-              {dev.activities.length > 0 ? (
-                dev.activities.map((act) => (
-                  <div key={act.id} className="relative">
-                    <div className="absolute left-[-21px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-slate-900" />
-                    <div>
-                      <p className="text-sm text-slate-650 dark:text-slate-200">
-                        {act.details} in <span className="font-semibold text-slate-800 dark:text-white">{act.target}</span>
-                      </p>
-                      <span className="text-[10px] text-slate-400 font-semibold block mt-1">
-                        {new Date(act.time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-slate-450 text-sm py-4">No recent activities logged.</div>
-              )}
-            </div>
-          </div>
-
         </div>
-
       </div>
-
     </div>
   );
 };
