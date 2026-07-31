@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { FiActivity, FiClock, FiSearch, FiFolder, FiGitCommit, FiGitPullRequest, FiAlertCircle, FiUserPlus, FiUserMinus, FiPlus } from 'react-icons/fi';
-import { activityLogs } from '../data/mockData';
+import { useActivityLogs } from '../hooks/useDevTrackQueries';
 
 const Activity = () => {
+  const { data: activityLogs = [] } = useActivityLogs();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
 

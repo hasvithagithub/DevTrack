@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { FiBell, FiCheck, FiCheckSquare, FiClock, FiTrash2, FiInfo } from 'react-icons/fi';
-import { notifications } from '../data/mockData';
+import { useNotifications } from '../hooks/useDevTrackQueries';
 
 const Notifications = () => {
+  const { data: notifications = [] } = useNotifications();
   const [notificationsList, setNotificationsList] = useState(notifications);
   const [filter, setFilter] = useState('All'); // All or Unread
 

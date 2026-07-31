@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FiAlertCircle, FiSearch, FiFolder, FiMessageSquare, FiClock, FiPlus, FiUser } from 'react-icons/fi';
-import { issues, repositories, developers } from '../data/mockData';
+import { useAllIssues, useRepositories, useDevelopers } from '../hooks/useDevTrackQueries';
 
 const Issues = () => {
+  const { data: issues = [] } = useAllIssues();
+  const { data: repositories = [] } = useRepositories();
+  const { data: developers = [] } = useDevelopers();
   const [searchParams] = useSearchParams();
   const searchParamQuery = searchParams.get('search') || '';
 

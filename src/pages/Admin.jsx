@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FiShield, FiUserPlus, FiFolderPlus, FiUsers, FiFolder, FiLock, FiUnlock, FiTrash2, FiFileText, FiInfo, FiKey } from 'react-icons/fi';
 import Modal from '../components/Modal';
-import { developers, repositories, auditLogs, orgInfo } from '../data/mockData';
+import { useDevelopers, useRepositories, useAuditLogs, useOrgInfo } from '../hooks/useDevTrackQueries';
 
 const Admin = () => {
+  const { data: developers = [] } = useDevelopers();
+  const { data: repositories = [] } = useRepositories();
+  const { data: auditLogs = [] } = useAuditLogs();
+  const { data: orgInfo = {} } = useOrgInfo();
   const [searchParams] = useSearchParams();
   const defaultAction = searchParams.get('action') || '';
 

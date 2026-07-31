@@ -5,9 +5,12 @@ import {
   FiGitCommit, FiSearch, FiChevronLeft, FiChevronRight, 
   FiFolder, FiUser, FiGitBranch, FiCalendar 
 } from 'react-icons/fi';
-import { commits, repositories, developers } from '../data/mockData';
+import { useAllCommits, useRepositories, useDevelopers } from '../hooks/useDevTrackQueries';
 
 const Commits = () => {
+  const { data: commits = [] } = useAllCommits();
+  const { data: repositories = [] } = useRepositories();
+  const { data: developers = [] } = useDevelopers();
   const [searchParams] = useSearchParams();
   const searchParamQuery = searchParams.get('search') || '';
 

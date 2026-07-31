@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { FiUser, FiSettings, FiSliders, FiBell, FiShield, FiCpu, FiKey, FiTerminal, FiDatabase, FiCheck } from 'react-icons/fi';
 import { useTheme } from '../hooks/ThemeContext';
-import { orgInfo } from '../data/mockData';
+import { useOrgInfo } from '../hooks/useDevTrackQueries';
 
 const Settings = () => {
+  const { data: orgInfo = {} } = useOrgInfo();
   const { theme, setTheme } = useTheme();
   
   const [activeTab, setActiveTab] = useState('profile');

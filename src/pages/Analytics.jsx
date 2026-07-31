@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, Cell, PieChart, Pie } from 'recharts';
 import { FiBarChart2, FiCalendar, FiArrowDownRight, FiArrowUpRight, FiClock } from 'react-icons/fi';
 import ChartCard from '../components/ChartCard';
-import { repositories, developers } from '../data/mockData';
+import { useRepositories, useDevelopers } from '../hooks/useDevTrackQueries';
 
 const Analytics = () => {
+  const { data: repositories = [] } = useRepositories();
+  const { data: developers = [] } = useDevelopers();
   const [timeRange, setTimeRange] = useState('30days');
 
   // Chart 1: Commits Per Developer

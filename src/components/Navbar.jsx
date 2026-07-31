@@ -2,9 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { FiSearch, FiBell, FiSun, FiMoon, FiMenu, FiChevronRight, FiFolder, FiUsers, FiGitCommit, FiGitBranch, FiGitPullRequest, FiAlertCircle } from 'react-icons/fi';
 import { useTheme } from '../hooks/ThemeContext';
-import { orgInfo, repositories, developers, commits, issues, pullRequests, branches, notifications } from '../data/mockData';
+import { useOrgInfo, useRepositories, useDevelopers, useAllCommits, useAllIssues, useAllPullRequests, useAllBranches, useNotifications } from '../hooks/useDevTrackQueries';
 
 const Navbar = ({ setIsMobileOpen, isCollapsed }) => {
+  const { data: orgInfo = {} } = useOrgInfo();
+  const { data: repositories = [] } = useRepositories();
+  const { data: developers = [] } = useDevelopers();
+  const { data: commits = [] } = useAllCommits();
+  const { data: issues = [] } = useAllIssues();
+  const { data: pullRequests = [] } = useAllPullRequests();
+  const { data: branches = [] } = useAllBranches();
+  const { data: notifications = [] } = useNotifications();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();

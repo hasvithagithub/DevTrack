@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FiGitBranch, FiShield, FiSearch, FiFolder, FiLock } from 'react-icons/fi';
-import { branches } from '../data/mockData';
+import { useAllBranches } from '../hooks/useDevTrackQueries';
 
 const Branches = () => {
+  const { data: branches = [] } = useAllBranches();
   const [searchParams] = useSearchParams();
   const searchParamQuery = searchParams.get('search') || '';
 

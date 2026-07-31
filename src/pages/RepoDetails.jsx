@@ -6,7 +6,7 @@ import {
   FiActivity, FiBarChart2, FiClock, FiChevronLeft, FiCheckCircle, FiShield, FiCornerDownRight 
 } from 'react-icons/fi';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
-import { getRepoDetail } from '../data/mockData';
+import { useRepoDetail } from '../hooks/useDevTrackQueries';
 
 const RepoDetails = () => {
   const { name } = useParams();

@@ -76,6 +76,13 @@ app.use('/api/gitea', async (req, res) => {
 
     res.status(response.status).json(response.data);
   } catch (error) {
+    console.error('Gitea Proxy Error on path:', req.path);
+    if (error.response) {
+      console.error('Gitea returned status:', error.response.status);
+      console.error('Gitea returned data:', error.response.data);
+    } else {
+      console.error('Error message:', error.message);
+    }
     const status = error.response ? error.response.status : 500;
     const data = error.response ? error.response.data : { error: 'Internal Server Error' };
     res.status(status).json(data);

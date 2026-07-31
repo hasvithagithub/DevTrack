@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiUsers, FiSearch, FiClock, FiGrid, FiArrowRight, FiUserPlus } from 'react-icons/fi';
-import { developers } from '../data/mockData';
+import { useDevelopers } from '../hooks/useDevTrackQueries';
 
 const Developers = () => {
+  const { data: developers = [] } = useDevelopers();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');

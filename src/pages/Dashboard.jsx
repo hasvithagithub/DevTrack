@@ -11,25 +11,34 @@ import {
 } from 'recharts';
 import StatCard from '../components/StatCard';
 import ChartCard from '../components/ChartCard';
-import { repositories, developers, commits, pullRequests, issues, activityLogs } from '../data/mockData';
+import { useRepositories, useDevelopers, useAllCommits, useAllPullRequests, useAllIssues, useActivityLogs } from '../hooks/useDevTrackQueries';
 
 const Dashboard = () => {
+  const { data: repositories = [] } = useRepositories();
+  const { data: developers = [] } = useDevelopers();
+  const { data: commits = [] } = useAllCommits();
+  const { data: pullRequests = [] } = useAllPullRequests();
+  const { data: issues = [] } = useAllIssues();
+  const { data: activityLogs = [] } = useActivityLogs();
+
   // Stats calculations
   const totalRepos = repositories.length;
   const totalDevs = developers.length;
-  const activeDevs = developers.filter(d => d.status === 'Active').length;
-  const openPRs = pullRequests.filter(pr => pr.status === 'Open').length;
-  const openIssues = issues.filter(i => i.status === 'Open').length;
+  const activeDevs = developers.length > 0 ? developers.filter(d => d.status === 'Active').length : 0;
+  
+  // Derive PRs and Issues from repo stats since global hooks are empty
+  const openPRs = repositories.reduce((sum, r) => sum + (r.openPRsCount || 0), 0);
+  const openIssues = repositories.reduce((sum, r) => sum + (r.openIssuesCount || 0), 0);
   
   // Storage summary: add MB values
   const totalStorage = repositories.reduce((acc, repo) => {
-    const val = parseInt(repo.storageUsed);
+    const val = parseInt(repo.storageUsed) || 0;
     return acc + val;
   }, 0);
 
   // Today's commits
   const today = new Date().toISOString().split('T')[0];
-  const todayCommits = commits.filter(c => c.dateTime.startsWith(today)).length || 3; // Fallback to 3 if none on today
+  const todayCommits = commits.filter(c => c.dateTime && c.dateTime.startsWith(today)).length;
   const weeklyCommits = commits.length * 3; // Mock realistic weekly scale
   const monthlyCommits = commits.length * 12;
 

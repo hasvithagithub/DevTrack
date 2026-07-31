@@ -11,27 +11,46 @@ const Login = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
-    if (!username.trim() || !password.trim()) {
-      setError('Please fill in all fields.');
+    if (!password.trim()) {
+      setError('Please provide your Personal Access Token.');
       return;
     }
 
     setIsLoading(true);
 
-    // Simulate server auth latency
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Call the backend API (which verifies with Gitea)
+      const res = await fetch('http://localhost:4000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: password })
+      });
+
+      if (!res.ok) {
+        throw new Error('Invalid token or server unreachable');
+      }
+
+      const data = await res.json();
+      
+      // Persist token + user info — the api.js interceptor reads 'token' from this object
       localStorage.setItem('devtrack-auth', JSON.stringify({
-        username,
-        name: username === 'swilson' ? 'Sarah Wilson' : 'Administrator',
-        role: 'Administrator'
+        token: password,                                          // ← THE KEY FIX
+        username: data.user.login,
+        name: data.user.full_name || data.user.login,
+        role: data.user.is_admin ? 'Administrator' : 'Developer',
+        avatar: data.user.avatar_url,
+        email: data.user.email,
       }));
       navigate('/dashboard');
-    }, 800);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -127,57 +146,24 @@ const Login = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username Input */}
+            {/* Token Input */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Username / Email
+                Gitea Personal Access Token
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="name@company.com"
-                  className="w-full bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
-                />
-                <FiUser className="absolute left-3.5 top-3.5 text-slate-400 dark:text-slate-600 text-sm" />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  Password
-                </label>
-                <a href="#forgot" className="text-xs font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 transition-colors">
-                  Forgot Password?
-                </a>
-              </div>
               <div className="relative">
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter your token..."
                   className="w-full bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
                 />
                 <FiLock className="absolute left-3.5 top-3.5 text-slate-400 dark:text-slate-600 text-sm" />
               </div>
-            </div>
-
-            {/* Remember Me Toggle */}
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-slate-350 rounded focus:ring-blue-500 focus:ring-offset-0 focus:ring-2"
-              />
-              <label htmlFor="remember-me" className="ml-2.5 text-sm font-semibold text-slate-400 dark:text-slate-500 cursor-pointer">
-                Remember this device
-              </label>
+              <p className="text-xs text-slate-400 mt-2">
+                Generate a token in your Gitea Settings &gt; Applications.
+              </p>
             </div>
 
             {/* Login Button */}
@@ -195,17 +181,10 @@ const Login = () => {
                   <span>Authenticating...</span>
                 </>
               ) : (
-                <span>Sign In</span>
+                <span>Sign In with Token</span>
               )}
             </button>
           </form>
-
-          {/* Quick login hint for testing */}
-          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
-            <span className="text-xs text-slate-450 dark:text-slate-650 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-800/50 font-medium">
-              Demo Credentials: <span className="font-mono text-blue-500 dark:text-blue-400 font-bold">swilson</span> / <span className="font-mono text-blue-500 dark:text-blue-400 font-bold">password</span>
-            </span>
-          </div>
 
         </motion.div>
       </div>

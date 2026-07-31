@@ -5,7 +5,7 @@ import {
   FiUser, FiMail, FiMapPin, FiBriefcase, FiFolder, FiGitCommit, 
   FiAlertCircle, FiGitPullRequest, FiClock, FiChevronLeft, FiActivity, FiGlobe 
 } from 'react-icons/fi';
-import { getDevProfile } from '../data/mockData';
+import { useDevProfile } from '../hooks/useDevTrackQueries';
 
 const DevProfile = () => {
   const { username } = useParams();
